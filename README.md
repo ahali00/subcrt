@@ -61,15 +61,14 @@ Option	Description
 --retries	Number of retry attempts on failure (default: 3)
 --delay	Delay in seconds between retries (default: 5)
 --print	Print subdomains on console instead of saving to file
+
+
 Example Output
 
 🔍 [+] Fetching subdomains for: example.com
 📁 [✓] Found 238 subdomains. Saved to subcrt-example.com.txt
 
-License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
-```
 ## Author
 
 Ali Hassan (GitHub: [aha00](https://github.com/ahali00))  
