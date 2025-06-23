@@ -72,7 +72,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ```
 ## Author
 
-Ali Hassan (GitHub: [aha00](https://github.com/aha00))  
+Ali Hassan (GitHub: [aha00](https://github.com/ahali00))  
 Twitter: [@dsxa0](https://twitter.com/dsxa0)
 
 
