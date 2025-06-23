@@ -66,6 +66,7 @@ Option	Description
 ## Example Output
 
 🔍 [+] Fetching subdomains for: example.com
+
 📁 [✓] Found 238 subdomains. Saved to subcrt-example.com.txt
 
 
