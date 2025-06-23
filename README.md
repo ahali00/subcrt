@@ -24,14 +24,20 @@ A simple and effective **subdomain enumeration tool** using [crt.sh](https://crt
 ## Installation
 
 1. Clone this repository or download the files.
+```
+   git clone https://github.com/yourusername/subcrt.git
+   cd subcrt
+```
+
 
 2. Install the required Python package using pip:
 
-```bash
+```
 pip install -r requirements.txt
+```
 
-Usage
-
+## Usage
+```bash
 # Enumerate subdomains for a single domain and save results to default file
 python3 subcrt.py -d example.com
 
@@ -63,14 +69,14 @@ Example Output
 License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
-
+```
 ## Author
 
 Ali Hassan (GitHub: [aha00](https://github.com/aha00))  
 Twitter: [@dsxa0](https://twitter.com/dsxa0)
 
 
-Notes
+## Notes
 
     Make sure you have internet connection as the tool queries crt.sh online.
 
