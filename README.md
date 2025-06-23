@@ -64,12 +64,10 @@ Option	Description
 ```
 
 ## Example Output
-
+```
 🔍 [+] Fetching subdomains for: example.com
-
 📁 [✓] Found 238 subdomains. Saved to subcrt-example.com.txt
-
-
+```
 ## Author
 
 Ali Hassan (GitHub: [aha00](https://github.com/ahali00))  
