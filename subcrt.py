@@ -7,18 +7,19 @@ import sys
 import re
 import time
 import argparse
-
 import requests
 
 
 class Colors:
+    """ANSI color codes for terminal output"""
     GREEN = '\033[92m'
     RED = '\033[91m'
     CYAN = '\033[96m'
     RESET = '\033[0m'
 
-BANNER = r"""
-{CYAN}
+
+BANNER = rf"""
+{Colors.CYAN}
    _____ _    _ ____   _____ _____ _______ 
   / ____| |  | |  _ \ / ____|  __ \__   __|
  | (___ | |  | | |_) | |    | |__) | | |   
@@ -26,12 +27,14 @@ BANNER = r"""
   ____) | |__| | |_) | |____| | \ \  | |   
  |_____/ \____/|____/ \_____|_|  \_\ |_|                                                                                                                  
 ---------------------------------------------
-{RESET}
-""".format(CYAN=Colors.CYAN, RESET=Colors.RESET)
+{Colors.RESET}
+"""
+
 
 def fetch_subdomains(domain, retries=3, delay=5):
+    """Fetch subdomains for a given domain from crt.sh"""
     url = f"https://crt.sh/?q=%25.{domain}&output=json"
-    for attempt in range(1, retries+1):
+    for attempt in range(1, retries + 1):
         print(f"🔍 [DEBUG] Attempt {attempt}: Requesting URL: {url}")
         try:
             response = requests.get(url, timeout=15)
@@ -49,15 +52,19 @@ def fetch_subdomains(domain, retries=3, delay=5):
                         domains.add(p.lower())
             return sorted(domains)
         except requests.exceptions.HTTPError as e:
-            print(f"❌ {Colors.RED}[!] HTTP error on attempt {attempt}/{retries}: {e}{Colors.RESET}")
-        except Exception as e:
-            print(f"❌ {Colors.RED}[!] Error on attempt {attempt}/{retries}: {e}{Colors.RESET}")
+            print(f"{Colors.RED}[!] HTTP error on attempt {attempt}/{retries}: {e}{Colors.RESET}")
+        except requests.exceptions.RequestException as e:
+            print(f"{Colors.RED}[!] Network error on attempt {attempt}/{retries}: {e}{Colors.RESET}")
+        except ValueError as e:
+            print(f"{Colors.RED}[!] JSON parsing error: {e}{Colors.RESET}")
         if attempt < retries:
             print(f"⚠️ [*] Retrying in {delay} seconds...")
             time.sleep(delay)
     return []
 
+
 def parse_args():
+    """Parse command-line arguments"""
     parser = argparse.ArgumentParser(description="Subdomain enumeration tool using crt.sh")
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("-d", "--domain", help="Single domain to search")
@@ -68,7 +75,9 @@ def parse_args():
     parser.add_argument("--print", action="store_true", help="Print results to stdout instead of saving to files")
     return parser
 
+
 def main():
+    """Main function"""
     print(BANNER)
     parser = parse_args()
     try:
@@ -78,19 +87,18 @@ def main():
         sys.exit(0)
 
     domains = []
-
     if args.domain:
         domains = [args.domain]
     elif args.file:
         try:
-            with open(args.file, "r") as f:
+            with open(args.file, "r", encoding="utf-8") as f:
                 domains = [line.strip() for line in f if line.strip()]
-        except Exception as e:
-            print(f"❌ {Colors.RED}[!] Failed to read file: {e}{Colors.RESET}")
+        except OSError as e:
+            print(f"{Colors.RED}[!] Failed to read file: {e}{Colors.RESET}")
             sys.exit(1)
 
     for domain in domains:
-        print(f"🔍 {Colors.GREEN}[+] Fetching subdomains for: {domain}{Colors.RESET}")
+        print(f"{Colors.GREEN}[+] Fetching subdomains for: {domain}{Colors.RESET}")
         subdomains = fetch_subdomains(domain, retries=args.retries, delay=args.delay)
         if subdomains:
             if args.print:
@@ -99,16 +107,16 @@ def main():
                     print(sub)
                 print()
             else:
-                if args.output and len(domains) == 1:
-                    filename = args.output
-                else:
-                    filename = f"subcrt-{domain}.txt"
-
-                with open(filename, "w") as f:
-                    f.write("\n".join(subdomains))
-                print(f"📁 {Colors.GREEN}[✓] Found {len(subdomains)} subdomains. Saved to {filename}{Colors.RESET}")
+                filename = args.output if args.output and len(domains) == 1 else f"subcrt-{domain}.txt"
+                try:
+                    with open(filename, "w", encoding="utf-8") as f:
+                        f.write("\n".join(subdomains))
+                    print(f"{Colors.GREEN}[✓] Found {len(subdomains)} subdomains. Saved to {filename}{Colors.RESET}")
+                except OSError as e:
+                    print(f"{Colors.RED}[!] Failed to write file: {e}{Colors.RESET}")
         else:
-            print(f"❌ {Colors.RED}[!] No subdomains found for {domain}.{Colors.RESET}")
+            print(f"{Colors.RED}[!] No subdomains found for {domain}.{Colors.RESET}")
+
 
 if __name__ == "__main__":
     main()
