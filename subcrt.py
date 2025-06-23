@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
-import requests
+"""
+subcrt: A minimal tool for subdomain discovery using crt.sh
+"""
+
 import sys
 import re
 import time
 import argparse
+
+import requests
+
 
 class Colors:
     GREEN = '\033[92m'
@@ -23,86 +29,83 @@ BANNER = r"""
 {RESET}
 """.format(CYAN=Colors.CYAN, RESET=Colors.RESET)
 
-def fetch_subdomains(domain, retries=3, delay=5):
+def fetch_subdomains(domain, retries=2, delay=3):
+    """Fetch subdomains from crt.sh for a single domain."""
     url = f"https://crt.sh/?q=%25.{domain}&output=json"
-    for attempt in range(1, retries+1):
-        print(f"🔍 [DEBUG] Attempt {attempt}: Requesting URL: {url}")
+    print(f"{Colors.CYAN}🔎 [+] Fetching subdomains for: {domain}{Colors.END}")
+
+    for attempt in range(retries):
         try:
-            response = requests.get(url, timeout=15)
-            print(f"🔍 [DEBUG] HTTP status code: {response.status_code}")
+            response = requests.get(url, timeout=10)
             response.raise_for_status()
             data = response.json()
-            print(f"🔍 [DEBUG] Number of entries fetched: {len(data)}")
-            domains = set()
+            subdomains = set()
             for entry in data:
-                name = entry.get("name_value", "")
-                parts = re.split(r"[\n,]", name)
-                for p in parts:
-                    p = p.strip()
-                    if p.endswith(domain):
-                        domains.add(p.lower())
-            return sorted(domains)
-        except requests.exceptions.HTTPError as e:
-            print(f"❌ {Colors.RED}[!] HTTP error on attempt {attempt}/{retries}: {e}{Colors.RESET}")
-        except Exception as e:
-            print(f"❌ {Colors.RED}[!] Error on attempt {attempt}/{retries}: {e}{Colors.RESET}")
-        if attempt < retries:
-            print(f"⚠️ [*] Retrying in {delay} seconds...")
+                name_value = entry.get("name_value", "")
+                for sub in name_value.split("\n"):
+                    if sub.endswith(f".{domain}") or sub == domain:
+                        subdomains.add(sub.strip())
+            return sorted(subdomains)
+        except (RequestException, ValueError) as e:
+            print(f"{Colors.WARNING}⚠️ [!] Attempt {attempt + 1} failed: {e}{Colors.END}")
             time.sleep(delay)
+
+    print(f"{Colors.FAIL}❌ [!] Failed to fetch subdomains after {retries} attempts.{Colors.END}")
     return []
 
-def parse_args():
-    parser = argparse.ArgumentParser(description="Subdomain enumeration tool using crt.sh")
-    group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument("-d", "--domain", help="Single domain to search")
-    group.add_argument("-f", "--file", help="File containing domains (one per line)")
-    parser.add_argument("-o", "--output", help="Output filename (only for single domain)")
-    parser.add_argument("--retries", type=int, default=3, help="Number of retries on failure")
-    parser.add_argument("--delay", type=int, default=5, help="Delay between retries (seconds)")
-    parser.add_argument("--print", action="store_true", help="Print results to stdout instead of saving to files")
-    return parser
+
+def save_to_file(subdomains, output_file):
+    """Save the subdomains to a file."""
+    try:
+        with open(output_file, "w", encoding="utf-8") as f:
+            for sub in subdomains:
+                f.write(sub + "\n")
+        print(f"{Colors.GREEN}💾 [✓] Saved to: {output_file}{Colors.END}")
+    except Exception as e:
+        print(f"{Colors.FAIL}❗ [!] Error saving to file: {e}{Colors.END}")
+
 
 def main():
-    print(BANNER)
-    parser = parse_args()
-    try:
-        args = parser.parse_args()
-    except SystemExit:
-        parser.print_help()
-        sys.exit(0)
+    """Main function to parse arguments and run subcrt."""
+    parser = argparse.ArgumentParser(
+        description="subcrt - Minimal subdomain discovery using crt.sh 🔍"
+    )
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("-d", "--domain", help="Single domain to scan")
+    group.add_argument("-f", "--file", help="File containing list of domains")
+    parser.add_argument("-o", "--output", help="Output file name")
+    parser.add_argument("--retries", type=int, default=2, help="Number of retry attempts")
+    parser.add_argument("--delay", type=int, default=3, help="Delay between retries (seconds)")
+    parser.add_argument("--print", action="store_true", help="Print results to stdout")
 
-    domains = []
+    args = parser.parse_args()
+
+    all_results = []
 
     if args.domain:
-        domains = [args.domain]
+        subs = fetch_subdomains(args.domain, args.retries, args.delay)
+        all_results.extend(subs)
     elif args.file:
         try:
-            with open(args.file, "r") as f:
+            with open(args.file, "r", encoding="utf-8") as f:
                 domains = [line.strip() for line in f if line.strip()]
+            for domain in domains:
+                subs = fetch_subdomains(domain, args.retries, args.delay)
+                all_results.extend(subs)
         except Exception as e:
-            print(f"❌ {Colors.RED}[!] Failed to read file: {e}{Colors.RESET}")
+            print(f"{Colors.FAIL}❗ [!] Error reading file: {e}{Colors.END}")
             sys.exit(1)
 
-    for domain in domains:
-        print(f"🔍 {Colors.GREEN}[+] Fetching subdomains for: {domain}{Colors.RESET}")
-        subdomains = fetch_subdomains(domain, retries=args.retries, delay=args.delay)
-        if subdomains:
-            if args.print:
-                print(f"Subdomains for {domain}:")
-                for sub in subdomains:
-                    print(sub)
-                print()
-            else:
-                if args.output and len(domains) == 1:
-                    filename = args.output
-                else:
-                    filename = f"subcrt-{domain}.txt"
+    unique_subs = sorted(set(all_results))
+    print(f"{Colors.GREEN}✅ [✓] Found {len(unique_subs)} unique subdomains.{Colors.END}")
 
-                with open(filename, "w") as f:
-                    f.write("\n".join(subdomains))
-                print(f"📁 {Colors.GREEN}[✓] Found {len(subdomains)} subdomains. Saved to {filename}{Colors.RESET}")
-        else:
-            print(f"❌ {Colors.RED}[!] No subdomains found for {domain}.{Colors.RESET}")
+    if args.print:
+        for sub in unique_subs:
+            print(sub)
+
+    if args.output:
+        save_to_file(unique_subs, args.output)
+
 
 if __name__ == "__main__":
     main()
